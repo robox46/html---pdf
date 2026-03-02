@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML a PDF</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem;
+        max-width: 560px;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 1rem;
+      }
+      button {
+        margin-top: 0.8rem;
+        padding: 0.6rem 0.9rem;
+        cursor: pointer;
+      }
+      #status {
+        margin-top: 0.8rem;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Generar PDF desde HTML</h1>
+    <div class="card">
+      <input id="fileInput" type="file" accept=".html" />
+      <br />
+      <button id="submitBtn">Generar PDF</button>
+      <div id="status">Estado: esperando archivo</div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById('fileInput');
+      const submitBtn = document.getElementById('submitBtn');
+      const statusBox = document.getElementById('status');
+
+      function setStatus(text) {
+        statusBox.textContent = `Estado: ${text}`;
+      }
+
+      submitBtn.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (!file) {
+          setStatus('selecciona un archivo .html');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('html', file, file.name);
+
+        try {
+          setStatus('subiendo');
+          const responsePromise = fetch('/render', {
+            method: 'POST',
+            body: formData,
+          });
+
+          setStatus('generando');
+          const response = await responsePromise;
+
+          if (!response.ok) {
+            const detail = await response.text();
+            throw new Error(detail || 'Error desconocido');
+          }
+
+          setStatus('descargando');
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'output.pdf';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+
+          setStatus('listo');
+        } catch (error) {
+          console.error(error);
+          setStatus('error al generar PDF');
+        }
+      });
+    </script>
+  </body>
+</html>
